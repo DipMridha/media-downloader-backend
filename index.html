@@ -164,20 +164,31 @@
     </p>
 
     <div class="input-box">
+
       <input
         type="text"
         id="url"
-        placeholder="Paste video URL here..."
+        placeholder="Paste direct media URL here..."
       >
 
-      <button id="analyzeBtn" onclick="analyzeMedia()">
+      <button
+        id="analyzeBtn"
+        onclick="analyzeMedia()"
+      >
         Analyze
       </button>
+
     </div>
 
-    <div class="message" id="message"></div>
+    <div
+      class="message"
+      id="message"
+    ></div>
 
-    <div class="result" id="result">
+    <div
+      class="result"
+      id="result"
+    >
 
       <img
         id="thumbnail"
@@ -186,15 +197,30 @@
         alt="Thumbnail"
       >
 
-      <div class="title" id="title"></div>
+      <div
+        class="title"
+        id="title"
+      ></div>
 
-      <div class="duration" id="duration"></div>
+      <div
+        class="duration"
+        id="duration"
+      ></div>
 
-      <select id="quality" class="quality">
-        <option value="">Select quality</option>
+      <select
+        id="quality"
+        class="quality"
+      >
+        <option value="">
+          Select quality
+        </option>
       </select>
 
-      <button class="download" onclick="downloadMedia()">
+      <button
+        class="download"
+        id="downloadBtn"
+        onclick="downloadMedia()"
+      >
         ⬇ Download
       </button>
 
@@ -215,102 +241,184 @@
 
     async function analyzeMedia() {
 
-      const urlInput = document.getElementById("url");
-      const analyzeBtn = document.getElementById("analyzeBtn");
-      const message = document.getElementById("message");
-      const result = document.getElementById("result");
+      const url =
+        document.getElementById("url")
+          .value
+          .trim();
 
-      const url = urlInput.value.trim();
+      const analyzeBtn =
+        document.getElementById("analyzeBtn");
+
+      const message =
+        document.getElementById("message");
+
+      const result =
+        document.getElementById("result");
+
+      const quality =
+        document.getElementById("quality");
+
 
       if (!url) {
-        message.textContent = "Please paste a video URL first.";
+
+        message.textContent =
+          "Please paste a media URL first.";
+
         return;
       }
 
+
       analyzeBtn.disabled = true;
-      analyzeBtn.textContent = "Analyzing...";
+
+      analyzeBtn.textContent =
+        "Analyzing...";
+
       message.textContent = "";
-      result.style.display = "none";
+
+      result.style.display =
+        "none";
 
 
       try {
 
-        const response = await fetch(
-          API_URL + "/analyze",
-          {
-            method: "POST",
+        const response =
+          await fetch(
+            API_URL + "/analyze",
+            {
+              method: "POST",
 
-            headers: {
-              "Content-Type": "application/json"
-            },
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
 
-            body: JSON.stringify({
-              url: url
-            })
-          }
-        );
-
-
-        const data = await response.json();
-
-
-        if (!response.ok || !data.success) {
-          throw new Error(
-            data.message || "Unable to analyze this URL."
+              body: JSON.stringify({
+                url: url
+              })
+            }
           );
+
+
+        const data =
+          await response.json();
+
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+
+          throw new Error(
+            data.message ||
+            "Unable to analyze this URL."
+          );
+
         }
 
 
-        document.getElementById("title").textContent =
-          data.title || "Unknown title";
+        document.getElementById(
+          "title"
+        ).textContent =
+          data.title ||
+          "Media";
 
 
-        document.getElementById("duration").textContent =
+        document.getElementById(
+          "duration"
+        ).textContent =
           data.duration
-            ? "Duration: " + data.duration
+            ? "Duration: " +
+              data.duration +
+              " seconds"
             : "";
 
 
+        const thumbnail =
+          document.getElementById(
+            "thumbnail"
+          );
+
+
         if (data.thumbnail) {
-          document.getElementById("thumbnail").src =
+
+          thumbnail.src =
             data.thumbnail;
+
+          thumbnail.style.display =
+            "block";
+
+        } else {
+
+          thumbnail.style.display =
+            "none";
+
         }
 
-
-        const quality =
-          document.getElementById("quality");
 
         quality.innerHTML =
           '<option value="">Select quality</option>';
 
 
-        if (data.formats && Array.isArray(data.formats)) {
+        if (
+          data.formats &&
+          Array.isArray(data.formats) &&
+          data.formats.length > 0
+        ) {
 
-          data.formats.forEach((format, index) => {
+          data.formats.forEach(
+            (format, index) => {
 
-            const option =
-              document.createElement("option");
+              const option =
+                document.createElement(
+                  "option"
+                );
 
-            option.value =
-              format.format_id || index;
 
-            option.textContent =
-              format.quality ||
-              format.format_note ||
-              format.ext ||
-              "Format " + (index + 1);
+              option.value =
+                format.downloadUrl ||
+                format.url ||
+                "";
 
-            quality.appendChild(option);
 
-          });
+              option.textContent =
+                format.quality ||
+                format.format_note ||
+                format.ext ||
+                "Format " +
+                (index + 1);
+
+
+              if (option.value) {
+
+                quality.appendChild(
+                  option
+                );
+
+              }
+
+            }
+          );
 
         }
 
 
-        result.style.display = "block";
+        result.style.display =
+          "block";
 
-        message.textContent =
-          "Video analyzed successfully!";
+
+        if (
+          quality.options.length <= 1
+        ) {
+
+          message.textContent =
+            "Media analyzed. No downloadable formats were provided.";
+
+        } else {
+
+          message.textContent =
+            "Media analyzed successfully!";
+
+        }
 
 
       } catch (error) {
@@ -324,31 +432,54 @@
       }
 
 
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = "Analyze";
+      analyzeBtn.disabled =
+        false;
+
+      analyzeBtn.textContent =
+        "Analyze";
+
     }
 
 
     function downloadMedia() {
 
-      const quality =
-        document.getElementById("quality").value;
+      const selectedUrl =
+        document.getElementById(
+          "quality"
+        ).value;
 
-      if (!quality) {
+      const message =
+        document.getElementById(
+          "message"
+        );
 
-        document.getElementById("message").textContent =
+
+      if (!selectedUrl) {
+
+        message.textContent =
           "Please select a quality first.";
 
         return;
+
       }
 
-      /*
-        Download endpoint এখনো backend-এ তৈরি হয়নি।
-        তাই আপাতত এই message দেখাবে।
-      */
 
-      document.getElementById("message").textContent =
-        "Download system will be connected next.";
+      message.textContent =
+        "Starting download...";
+
+
+      const downloadUrl =
+        API_URL +
+        "/download?url=" +
+        encodeURIComponent(
+          selectedUrl
+        );
+
+
+      window.open(
+        downloadUrl,
+        "_blank"
+      );
 
     }
 
