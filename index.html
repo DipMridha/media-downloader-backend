@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Media Downloader</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #111827, #1e3a8a);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 650px;
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(15px);
+      border-radius: 22px;
+      padding: 30px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #d1d5db;
+      margin-bottom: 28px;
+    }
+
+    .input-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      outline: none;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 14px 20px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .message {
+      text-align: center;
+      margin: 15px 0;
+      color: #fbbf24;
+    }
+
+    .result {
+      display: none;
+      margin-top: 25px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .thumbnail {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 15px;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .duration {
+      color: #d1d5db;
+      margin-bottom: 18px;
+    }
+
+    .quality {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      border: none;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+
+    .download {
+      width: 100%;
+      background: #16a34a;
+    }
+
+    .download:hover {
+      background: #15803d;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 25px;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      .input-box {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>⚡ Media Downloader</h1>
+
+    <p class="subtitle">
+      Download your media easily
+    </p>
+
+    <div class="input-box">
+      <input
+        type="text"
+        id="url"
+        placeholder="Paste video URL here..."
+      >
+
+      <button id="analyzeBtn" onclick="analyzeMedia()">
+        Analyze
+      </button>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="result" id="result">
+
+      <img
+        id="thumbnail"
+        class="thumbnail"
+        src=""
+        alt="Thumbnail"
+      >
+
+      <div class="title" id="title"></div>
+
+      <div class="duration" id="duration"></div>
+
+      <select id="quality" class="quality">
+        <option value="">Select quality</option>
+      </select>
+
+      <button class="download" onclick="downloadMedia()">
+        ⬇ Download
+      </button>
+
+    </div>
+
+    <div class="footer">
+      Media Downloader
+    </div>
+
+  </div>
+
+
+  <script>
+
+    const API_URL =
+      "https://media-downloader-backend-dkqe.onrender.com";
+
+
+    async function analyzeMedia() {
+
+      const urlInput = document.getElementById("url");
+      const analyzeBtn = document.getElementById("analyzeBtn");
+      const message = document.getElementById("message");
+      const result = document.getElementById("result");
+
+      const url = urlInput.value.trim();
+
+      if (!url) {
+        message.textContent = "Please paste a video URL first.";
+        return;
+      }
+
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = "Analyzing...";
+      message.textContent = "";
+      result.style.display = "none";
+
+
+      try {
+
+        const response = await fetch(
+          API_URL + "/analyze",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+              url: url
+            })
+          }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message || "Unable to analyze this URL."
+          );
+        }
+
+
+        document.getElementById("title").textContent =
+          data.title || "Unknown title";
+
+
+        document.getElementById("duration").textContent =
+          data.duration
+            ? "Duration: " + data.duration
+            : "";
+
+
+        if (data.thumbnail) {
+          document.getElementById("thumbnail").src =
+            data.thumbnail;
+        }
+
+
+        const quality =
+          document.getElementById("quality");
+
+        quality.innerHTML =
+          '<option value="">Select quality</option>';
+
+
+        if (data.formats && Array.isArray(data.formats)) {
+
+          data.formats.forEach((format, index) => {
+
+            const option =
+              document.createElement("option");
+
+            option.value =
+              format.format_id || index;
+
+            option.textContent =
+              format.quality ||
+              format.format_note ||
+              format.ext ||
+              "Format " + (index + 1);
+
+            quality.appendChild(option);
+
+          });
+
+        }
+
+
+        result.style.display = "block";
+
+        message.textContent =
+          "Video analyzed successfully!";
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        message.textContent =
+          error.message ||
+          "Something went wrong.";
+
+      }
+
+
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Analyze";
+    }
+
+
+    function downloadMedia() {
+
+      const quality =
+        document.getElementById("quality").value;
+
+      if (!quality) {
+
+        document.getElementById("message").textContent =
+          "Please select a quality first.";
+
+        return;
+      }
+
+      /*
+        Download endpoint এখনো backend-এ তৈরি হয়নি।
+        তাই আপাতত এই message দেখাবে।
+      */
+
+      document.getElementById("message").textContent =
+        "Download system will be connected next.";
+
+    }
+
+  </script>
+
+</body>
+</html>
