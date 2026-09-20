@@ -139,7 +139,52 @@ app.post("/analyze", async (req, res) => {
     });
   }
 });
+app.get("/download", async (req, res) => {
+  const { url } = req.query;
 
+  if (!url) {
+    return res.status(400).json({
+      success: false,
+      message: "Download URL is required"
+    });
+  }
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to download media"
+      });
+    }
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="media.mp4"'
+    );
+
+    res.setHeader(
+      "Content-Type",
+      response.headers.get("content-type") ||
+      "application/octet-stream"
+    );
+
+    const buffer = Buffer.from(
+      await response.arrayBuffer()
+    );
+
+    res.send(buffer);
+
+  } catch (error) {
+    console.error("Download error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Download failed"
+    });
+  }
+});
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
