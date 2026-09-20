@@ -18,32 +18,30 @@
       min-height: 100vh;
       background: linear-gradient(135deg, #111827, #1e3a8a);
       color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       padding: 20px;
     }
 
     .container {
       width: 100%;
       max-width: 650px;
+      margin: 30px auto;
       background: rgba(255,255,255,0.10);
       backdrop-filter: blur(15px);
       border-radius: 22px;
-      padding: 30px;
+      padding: 25px;
       box-shadow: 0 20px 50px rgba(0,0,0,0.35);
     }
 
     h1 {
       text-align: center;
-      font-size: 32px;
-      margin-bottom: 10px;
+      font-size: 30px;
+      margin-bottom: 8px;
     }
 
     .subtitle {
       text-align: center;
       color: #d1d5db;
-      margin-bottom: 28px;
+      margin-bottom: 25px;
     }
 
     .input-box {
@@ -85,18 +83,21 @@
       text-align: center;
       margin: 15px 0;
       color: #fbbf24;
+      min-height: 20px;
     }
 
     .result {
       display: none;
-      margin-top: 25px;
+      margin-top: 20px;
       background: rgba(0,0,0,0.25);
       border-radius: 16px;
-      padding: 20px;
+      padding: 18px;
     }
 
     .thumbnail {
       width: 100%;
+      max-height: 350px;
+      object-fit: cover;
       border-radius: 12px;
       margin-bottom: 15px;
     }
@@ -104,30 +105,67 @@
     .title {
       font-size: 20px;
       font-weight: bold;
+      line-height: 1.4;
       margin-bottom: 8px;
     }
 
     .duration {
       color: #d1d5db;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
-    .quality {
-      width: 100%;
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0 10px;
+    }
+
+    .format-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .format-card {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
       padding: 13px;
-      border-radius: 10px;
-      border: none;
-      margin-bottom: 12px;
+    }
+
+    .format-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .format-name {
       font-size: 15px;
+      font-weight: bold;
     }
 
-    .download {
-      width: 100%;
+    .format-details {
+      color: #cbd5e1;
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .format-download {
       background: #16a34a;
+      padding: 9px 13px;
+      font-size: 13px;
+      white-space: nowrap;
     }
 
-    .download:hover {
+    .format-download:hover {
       background: #15803d;
+    }
+
+    .no-format {
+      color: #9ca3af;
+      font-size: 14px;
+      padding: 10px 0;
     }
 
     .footer {
@@ -138,17 +176,28 @@
     }
 
     @media (max-width: 600px) {
+
       .container {
-        padding: 20px;
+        margin: 10px auto;
+        padding: 18px;
       }
 
       .input-box {
         flex-direction: column;
       }
 
-      button {
+      .input-box button {
         width: 100%;
       }
+
+      .format-info {
+        align-items: flex-start;
+      }
+
+      .format-download {
+        padding: 8px 10px;
+      }
+
     }
   </style>
 </head>
@@ -168,7 +217,7 @@
       <input
         type="text"
         id="url"
-        placeholder="Paste direct media URL here..."
+        placeholder="Paste media URL here..."
       >
 
       <button
@@ -207,22 +256,29 @@
         id="duration"
       ></div>
 
-      <select
-        id="quality"
-        class="quality"
-      >
-        <option value="">
-          Select quality
-        </option>
-      </select>
 
-      <button
-        class="download"
-        id="downloadBtn"
-        onclick="downloadMedia()"
-      >
-        ⬇ Download
-      </button>
+      <!-- VIDEO -->
+
+      <div class="section-title">
+        🎥 Video Quality
+      </div>
+
+      <div
+        class="format-list"
+        id="videoList"
+      ></div>
+
+
+      <!-- AUDIO -->
+
+      <div class="section-title">
+        🎵 Audio Quality
+      </div>
+
+      <div
+        class="format-list"
+        id="audioList"
+      ></div>
 
     </div>
 
@@ -239,6 +295,245 @@
       "https://media-downloader-backend-dkqe.onrender.com";
 
 
+    // Store analyzed formats
+    let currentFormats = [];
+
+
+    // Format duration
+    function formatDuration(seconds) {
+
+      if (!seconds || isNaN(seconds)) {
+        return "Duration unavailable";
+      }
+
+      seconds = Math.floor(Number(seconds));
+
+      const hours =
+        Math.floor(seconds / 3600);
+
+      const minutes =
+        Math.floor((seconds % 3600) / 60);
+
+      const secs =
+        seconds % 60;
+
+
+      if (hours > 0) {
+
+        return (
+          hours +
+          ":" +
+          String(minutes).padStart(2, "0") +
+          ":" +
+          String(secs).padStart(2, "0")
+        );
+
+      }
+
+
+      return (
+        minutes +
+        ":" +
+        String(secs).padStart(2, "0")
+      );
+
+    }
+
+
+    // Format file size
+    function formatSize(bytes) {
+
+      if (!bytes || isNaN(bytes)) {
+        return "Size unavailable";
+      }
+
+      bytes = Number(bytes);
+
+      const mb =
+        bytes / (1024 * 1024);
+
+      if (mb < 1) {
+
+        return (
+          (bytes / 1024).toFixed(1) +
+          " KB"
+        );
+
+      }
+
+      return mb.toFixed(2) + " MB";
+
+    }
+
+
+    // Create format card
+    function createFormatCard(format, index) {
+
+      const card =
+        document.createElement("div");
+
+      card.className =
+        "format-card";
+
+
+      const info =
+        document.createElement("div");
+
+      info.className =
+        "format-info";
+
+
+      const left =
+        document.createElement("div");
+
+
+      const name =
+        document.createElement("div");
+
+      name.className =
+        "format-name";
+
+
+      let quality =
+        format.quality ||
+        "Unknown quality";
+
+
+      if (
+        format.type === "video" &&
+        format.height
+      ) {
+
+        quality =
+          format.height + "p";
+
+      }
+
+
+      name.textContent =
+        quality;
+
+
+      const details =
+        document.createElement("div");
+
+      details.className =
+        "format-details";
+
+
+      let detailText =
+        format.mimeType ||
+        "";
+
+
+      if (
+        format.width &&
+        format.height
+      ) {
+
+        detailText +=
+          " • " +
+          format.width +
+          "x" +
+          format.height;
+
+      }
+
+
+      if (
+        format.type === "video"
+      ) {
+
+        if (
+          format.hasAudio === true
+        ) {
+
+          detailText +=
+            " • 🔊 Audio included";
+
+        } else if (
+          format.hasAudio === false
+        ) {
+
+          detailText +=
+            " • 🔇 Video only";
+
+        }
+
+      }
+
+
+      if (
+        format.bitrate
+      ) {
+
+        detailText +=
+          " • " +
+          format.bitrate +
+          " kbps";
+
+      }
+
+
+      if (
+        format.size
+      ) {
+
+        detailText +=
+          " • " +
+          formatSize(format.size);
+
+      } else if (
+        format.filesize
+      ) {
+
+        detailText +=
+          " • " +
+          formatSize(format.filesize);
+
+      }
+
+
+      details.textContent =
+        detailText;
+
+
+      left.appendChild(name);
+
+      left.appendChild(details);
+
+
+      const downloadButton =
+        document.createElement("button");
+
+      downloadButton.className =
+        "format-download";
+
+      downloadButton.textContent =
+        "⬇ Download";
+
+
+      downloadButton.onclick =
+        function() {
+
+          downloadFormat(format);
+
+        };
+
+
+      info.appendChild(left);
+
+      info.appendChild(downloadButton);
+
+      card.appendChild(info);
+
+
+      return card;
+
+    }
+
+
+    // Analyze media
     async function analyzeMedia() {
 
       const url =
@@ -246,17 +541,25 @@
           .value
           .trim();
 
+
       const analyzeBtn =
         document.getElementById("analyzeBtn");
+
 
       const message =
         document.getElementById("message");
 
+
       const result =
         document.getElementById("result");
 
-      const quality =
-        document.getElementById("quality");
+
+      const videoList =
+        document.getElementById("videoList");
+
+
+      const audioList =
+        document.getElementById("audioList");
 
 
       if (!url) {
@@ -265,18 +568,28 @@
           "Please paste a media URL first.";
 
         return;
+
       }
 
 
-      analyzeBtn.disabled = true;
+      analyzeBtn.disabled =
+        true;
 
       analyzeBtn.textContent =
         "Analyzing...";
 
-      message.textContent = "";
+
+      message.textContent =
+        "Analyzing media...";
+
 
       result.style.display =
         "none";
+
+
+      videoList.innerHTML = "";
+
+      audioList.innerHTML = "";
 
 
       try {
@@ -316,6 +629,15 @@
         }
 
 
+        // Save formats
+        currentFormats =
+          Array.isArray(data.formats)
+            ? data.formats
+            : [];
+
+
+        // Title
+
         document.getElementById(
           "title"
         ).textContent =
@@ -323,15 +645,16 @@
           "Media";
 
 
+        // Duration
+
         document.getElementById(
           "duration"
         ).textContent =
-          data.duration
-            ? "Duration: " +
-              data.duration +
-              " seconds"
-            : "";
+          "⏱ Duration: " +
+          formatDuration(data.duration);
 
+
+        // Thumbnail
 
         const thumbnail =
           document.getElementById(
@@ -355,49 +678,72 @@
         }
 
 
-        quality.innerHTML =
-          '<option value="">Select quality</option>';
+        // Separate video/audio
+
+        const videos =
+          currentFormats.filter(
+            format =>
+              format.type === "video"
+          );
 
 
-        if (
-          data.formats &&
-          Array.isArray(data.formats) &&
-          data.formats.length > 0
-        ) {
+        const audios =
+          currentFormats.filter(
+            format =>
+              format.type === "audio"
+          );
 
-          data.formats.forEach(
+
+        // Video list
+
+        if (videos.length > 0) {
+
+          videos.forEach(
             (format, index) => {
 
-              const option =
-                document.createElement(
-                  "option"
-                );
-
-
-              option.value =
-                format.downloadUrl ||
-                format.url ||
-                "";
-
-
-              option.textContent =
-                format.quality ||
-                format.format_note ||
-                format.ext ||
-                "Format " +
-                (index + 1);
-
-
-              if (option.value) {
-
-                quality.appendChild(
-                  option
-                );
-
-              }
+              videoList.appendChild(
+                createFormatCard(
+                  format,
+                  index
+                )
+              );
 
             }
           );
+
+        } else {
+
+          videoList.innerHTML =
+            '<div class="no-format">' +
+            'No video quality available.' +
+            '</div>';
+
+        }
+
+
+        // Audio list
+
+        if (audios.length > 0) {
+
+          audios.forEach(
+            (format, index) => {
+
+              audioList.appendChild(
+                createFormatCard(
+                  format,
+                  index
+                )
+              );
+
+            }
+          );
+
+        } else {
+
+          audioList.innerHTML =
+            '<div class="no-format">' +
+            'No separate audio quality available.' +
+            '</div>';
 
         }
 
@@ -407,16 +753,16 @@
 
 
         if (
-          quality.options.length <= 1
+          currentFormats.length > 0
         ) {
 
           message.textContent =
-            "Media analyzed. No downloadable formats were provided.";
+            "Media analyzed successfully!";
 
         } else {
 
           message.textContent =
-            "Media analyzed successfully!";
+            "No downloadable formats found.";
 
         }
 
@@ -441,12 +787,8 @@
     }
 
 
-    function downloadMedia() {
-
-      const selectedUrl =
-        document.getElementById(
-          "quality"
-        ).value;
+    // Download selected format
+    function downloadFormat(format) {
 
       const message =
         document.getElementById(
@@ -454,10 +796,13 @@
         );
 
 
-      if (!selectedUrl) {
+      if (
+        !format ||
+        !format.url
+      ) {
 
         message.textContent =
-          "Please select a quality first.";
+          "Download URL is unavailable.";
 
         return;
 
@@ -468,12 +813,29 @@
         "Starting download...";
 
 
-      const downloadUrl =
+      let downloadUrl =
         API_URL +
         "/download?url=" +
         encodeURIComponent(
-          selectedUrl
+          format.url
         );
+
+
+      // Send EasyDown headers
+      if (
+        format.headers &&
+        Object.keys(format.headers).length > 0
+      ) {
+
+        downloadUrl +=
+          "&headers=" +
+          encodeURIComponent(
+            JSON.stringify(
+              format.headers
+            )
+          );
+
+      }
 
 
       window.open(
