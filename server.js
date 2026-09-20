@@ -30,7 +30,8 @@ app.post("/analyze", async (req, res) => {
       dumpSingleJson: true,
       noWarnings: true,
       skipDownload: true,
-      noPlaylist: true
+      noPlaylist: true,
+      preferFreeFormats: true
     });
 
     const formats = (info.formats || [])
@@ -51,6 +52,7 @@ app.post("/analyze", async (req, res) => {
     return res.json({
       success: true,
       message: "URL analyzed successfully",
+      title: info.title || "Unknown title",
       thumbnail: info.thumbnail || null,
       duration: Math.round(info.duration || 0),
       formats: formats,
@@ -62,7 +64,8 @@ app.post("/analyze", async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: "Unable to analyze this media URL"
+      message: "Unable to analyze this media URL",
+      error: error.message || "Unknown error"
     });
   }
 });
