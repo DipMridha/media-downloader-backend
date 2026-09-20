@@ -31,7 +31,9 @@ app.post("/analyze", async (req, res) => {
       noWarnings: true,
       skipDownload: true,
       noPlaylist: true,
-      preferFreeFormats: true
+      noCheckCertificates: true,
+      preferFreeFormats: true,
+      geoBypass: true
     });
 
     const formats = (info.formats || [])
@@ -55,8 +57,8 @@ app.post("/analyze", async (req, res) => {
       title: info.title || "Unknown title",
       thumbnail: info.thumbnail || null,
       duration: Math.round(info.duration || 0),
-      formats: formats,
-      url: url
+      formats,
+      url
     });
 
   } catch (error) {
