@@ -14,41 +14,6 @@ app.get("/", (req, res) => {
   });
 });
 
-function getYouTubeVideoId(url) {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.hostname === "youtu.be") {
-      return parsed.pathname.substring(1);
-    }
-
-    if (
-      parsed.hostname.includes("youtube.com") ||
-      parsed.hostname.includes("www.youtube.com")
-    ) {
-      return parsed.searchParams.get("v");
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function parseDuration(duration) {
-  const match = duration.match(
-    /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
-  );
-
-  if (!match) return 0;
-
-  const hours = Number(match[1] || 0);
-  const minutes = Number(match[2] || 0);
-  const seconds = Number(match[3] || 0);
-
-  return hours * 3600 + minutes * 60 + seconds;
-}
-
 app.post("/analyze", async (req, res) => {
   const { url } = req.body;
 
@@ -59,74 +24,120 @@ app.post("/analyze", async (req, res) => {
     });
   }
 
-  const videoId = getYouTubeVideoId(url);
+  const apiKey = process.env.EASYDOWN_API_KEY;
 
-  if (!videoId) {
-    return res.status(400).json({
+  if (!apiKey) {
+    return res.status(500).json({
       success: false,
-      message: "Invalid YouTube URL"
+      message: "EasyDown API key is not configured"
     });
   }
 
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY;
+    const response = await fetch(
+      "https://api.easydown.org/api/v1/parse",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          url: url
+        })
+      }
+    );
 
-    if (!apiKey) {
-      return res.status(500).json({
-        success: false,
-        message: "YouTube API key is not configured"
-      });
-    }
-
-    const apiUrl =
-      `https://www.googleapis.com/youtube/v3/videos` +
-      `?part=snippet,contentDetails` +
-      `&id=${encodeURIComponent(videoId)}` +
-      `&key=${encodeURIComponent(apiKey)}`;
-
-    const response = await fetch(apiUrl);
-    const data = await response.json();
+    const result = await response.json();
 
     if (!response.ok) {
-      console.error("YouTube API error:", data);
+      console.error("EasyDown API error:", result);
 
-      return res.status(400).json({
+      return res.status(response.status).json({
         success: false,
-        message: "YouTube API request failed",
-        error: data.error?.message || "Unknown API error"
+        message:
+          result?.msg ||
+          result?.message ||
+          "Unable to analyze this URL"
       });
     }
 
-    if (!data.items || data.items.length === 0) {
+    const media = result?.data;
+
+    if (!media) {
       return res.status(404).json({
         success: false,
-        message: "Video not found"
+        message: "No media information found"
       });
     }
 
-    const video = data.items[0];
+    const formats = [];
 
-    const title = video.snippet?.title || "Unknown title";
-    const thumbnail =
-      video.snippet?.thumbnails?.maxres?.url ||
-      video.snippet?.thumbnails?.high?.url ||
-      video.snippet?.thumbnails?.medium?.url ||
-      video.snippet?.thumbnails?.default?.url ||
-      null;
+    // Video formats
+    if (Array.isArray(media.videos)) {
+      media.videos.forEach((video, index) => {
+        if (!video?.url) return;
 
-    const duration = parseDuration(
-      video.contentDetails?.duration || "PT0S"
-    );
+        const quality =
+          video.quality ||
+          (
+            video.height
+              ? `${video.height}p`
+              : `Video ${index + 1}`
+          );
+
+        formats.push({
+          type: "video",
+          quality: quality,
+          url: video.url,
+          downloadUrl: video.url,
+          mimeType: video.mimeType || "video/mp4",
+          width: video.width || null,
+          height: video.height || null,
+          hasAudio: video.hasAudio ?? true,
+          headers: video.headers || {}
+        });
+      });
+    }
+
+    // Audio formats
+    if (Array.isArray(media.audios)) {
+      media.audios.forEach((audio, index) => {
+        if (!audio?.url) return;
+
+        formats.push({
+          type: "audio",
+          quality:
+            audio.quality ||
+            (
+              audio.bitrate
+                ? `${audio.bitrate} kbps`
+                : `Audio ${index + 1}`
+            ),
+          url: audio.url,
+          downloadUrl: audio.url,
+          mimeType: audio.mimeType || "audio/mpeg",
+          bitrate: audio.bitrate || null,
+          headers: audio.headers || {}
+        });
+      });
+    }
 
     return res.json({
       success: true,
       message: "URL analyzed successfully",
-      title: title,
-      thumbnail: thumbnail,
-      duration: duration,
-      formats: [],
-      url: url,
-      videoId: videoId
+
+      platform: media.platform || "unknown",
+
+      title: media.title || "Media",
+
+      thumbnail: media.thumbnail || null,
+
+      duration: media.duration || 0,
+
+      formats: formats,
+
+      url: url
     });
 
   } catch (error) {
@@ -139,8 +150,10 @@ app.post("/analyze", async (req, res) => {
     });
   }
 });
+
+
 app.get("/download", async (req, res) => {
-  const { url } = req.query;
+  const { url, headers } = req.query;
 
   if (!url) {
     return res.status(400).json({
@@ -150,7 +163,28 @@ app.get("/download", async (req, res) => {
   }
 
   try {
-    const response = await fetch(url);
+    const requestHeaders = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36"
+    };
+
+    // Optional headers returned by EasyDown
+    if (headers) {
+      try {
+        const extraHeaders = JSON.parse(headers);
+
+        Object.keys(extraHeaders).forEach((key) => {
+          requestHeaders[key] = extraHeaders[key];
+        });
+      } catch {
+        console.log("Invalid custom headers");
+      }
+    }
+
+    const response = await fetch(url, {
+      headers: requestHeaders,
+      redirect: "follow"
+    });
 
     if (!response.ok) {
       return res.status(400).json({
@@ -159,15 +193,28 @@ app.get("/download", async (req, res) => {
       });
     }
 
+    const contentType =
+      response.headers.get("content-type") ||
+      "application/octet-stream";
+
+    let filename = "media";
+
+    if (contentType.includes("video")) {
+      filename += ".mp4";
+    } else if (contentType.includes("audio")) {
+      filename += ".mp3";
+    } else {
+      filename += ".bin";
+    }
+
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="media.mp4"'
+      `attachment; filename="${filename}"`
     );
 
     res.setHeader(
       "Content-Type",
-      response.headers.get("content-type") ||
-      "application/octet-stream"
+      contentType
     );
 
     const buffer = Buffer.from(
@@ -179,12 +226,16 @@ app.get("/download", async (req, res) => {
   } catch (error) {
     console.error("Download error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Download failed"
     });
   }
 });
+
+
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(
+    `Server running on port ${PORT}`
+  );
 });
