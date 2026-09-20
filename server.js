@@ -35,7 +35,10 @@ app.post("/analyze", async (req, res) => {
     });
   }
 
-  const apiKey = process.env.EASYDOWN_API_KEY;
+
+  const apiKey =
+    process.env.EASYDOWN_API_KEY;
+
 
   if (!apiKey) {
     return res.status(500).json({
@@ -43,6 +46,7 @@ app.post("/analyze", async (req, res) => {
       message: "EasyDown API key is not configured"
     });
   }
+
 
   try {
 
@@ -62,10 +66,11 @@ app.post("/analyze", async (req, res) => {
       }
     );
 
-    const result = await response.json();
+
+    const result =
+      await response.json();
 
 
-    // EasyDown error
     if (!response.ok) {
 
       console.error(
@@ -84,7 +89,8 @@ app.post("/analyze", async (req, res) => {
     }
 
 
-    const media = result?.data;
+    const media =
+      result?.data;
 
 
     if (!media) {
@@ -103,7 +109,9 @@ app.post("/analyze", async (req, res) => {
     // VIDEO FORMATS
     // =========================
 
-    if (Array.isArray(media.videos)) {
+    if (
+      Array.isArray(media.videos)
+    ) {
 
       media.videos.forEach(
         (video, index) => {
@@ -124,7 +132,8 @@ app.post("/analyze", async (req, res) => {
 
           formats.push({
 
-            // Unique ID for Android
+            // IMPORTANT:
+            // Android uses this ID
             id: `video_${index}`,
 
             type: "video",
@@ -133,7 +142,8 @@ app.post("/analyze", async (req, res) => {
 
             url: video.url,
 
-            downloadUrl: video.url,
+            downloadUrl:
+              video.url,
 
             mimeType:
               video.mimeType ||
@@ -155,6 +165,7 @@ app.post("/analyze", async (req, res) => {
               video.headers ||
               {},
 
+            // Size if EasyDown provides it
             size:
               video.size ||
               video.filesize ||
@@ -171,7 +182,9 @@ app.post("/analyze", async (req, res) => {
     // AUDIO FORMATS
     // =========================
 
-    if (Array.isArray(media.audios)) {
+    if (
+      Array.isArray(media.audios)
+    ) {
 
       media.audios.forEach(
         (audio, index) => {
@@ -183,7 +196,8 @@ app.post("/analyze", async (req, res) => {
 
           formats.push({
 
-            // Unique ID for Android
+            // IMPORTANT:
+            // Android uses this ID
             id: `audio_${index}`,
 
             type: "audio",
@@ -196,9 +210,11 @@ app.post("/analyze", async (req, res) => {
                   : `Audio ${index + 1}`
               ),
 
-            url: audio.url,
+            url:
+              audio.url,
 
-            downloadUrl: audio.url,
+            downloadUrl:
+              audio.url,
 
             mimeType:
               audio.mimeType ||
@@ -212,6 +228,7 @@ app.post("/analyze", async (req, res) => {
               audio.headers ||
               {},
 
+            // Size if EasyDown provides it
             size:
               audio.size ||
               audio.filesize ||
@@ -254,9 +271,9 @@ app.post("/analyze", async (req, res) => {
       formats:
         formats,
 
+      // Original URL
       url:
         url
-
     });
 
 
@@ -266,6 +283,7 @@ app.post("/analyze", async (req, res) => {
       "Analyze error:",
       error
     );
+
 
     return res.status(500).json({
 
@@ -277,11 +295,8 @@ app.post("/analyze", async (req, res) => {
       error:
         error.message ||
         "Unknown error"
-
     });
-
   }
-
 });
 
 
@@ -303,7 +318,6 @@ app.get("/download", async (req, res) => {
       success: false,
       message: "Download URL is required"
     });
-
   }
 
 
@@ -318,7 +332,7 @@ app.get("/download", async (req, res) => {
 
 
     // =========================
-    // CUSTOM HEADERS
+    // EASYDOWN HEADERS
     // =========================
 
     if (headers) {
@@ -329,13 +343,14 @@ app.get("/download", async (req, res) => {
           JSON.parse(headers);
 
 
-        Object.keys(extraHeaders)
-          .forEach((key) => {
+        Object.keys(
+          extraHeaders
+        ).forEach((key) => {
 
-            requestHeaders[key] =
-              extraHeaders[key];
+          requestHeaders[key] =
+            extraHeaders[key];
 
-          });
+        });
 
 
       } catch {
@@ -343,9 +358,7 @@ app.get("/download", async (req, res) => {
         console.log(
           "Invalid custom headers"
         );
-
       }
-
     }
 
 
@@ -374,9 +387,7 @@ app.get("/download", async (req, res) => {
 
         message:
           "Unable to download media"
-
       });
-
     }
 
 
@@ -391,41 +402,28 @@ app.get("/download", async (req, res) => {
       "application/octet-stream";
 
 
-    // =========================
-    // FILE NAME
-    // =========================
-
     let filename =
       "media";
 
 
     if (
-      contentType.includes(
-        "video"
-      )
+      contentType.includes("video")
     ) {
 
       filename +=
         ".mp4";
 
-    }
-
-    else if (
-      contentType.includes(
-        "audio"
-      )
+    } else if (
+      contentType.includes("audio")
     ) {
 
       filename +=
         ".mp3";
 
-    }
-
-    else {
+    } else {
 
       filename +=
         ".bin";
-
     }
 
 
@@ -434,25 +432,19 @@ app.get("/download", async (req, res) => {
     // =========================
 
     res.setHeader(
-
       "Content-Disposition",
-
       `attachment; filename="${filename}"`
-
     );
 
 
     res.setHeader(
-
       "Content-Type",
-
       contentType
-
     );
 
 
     // =========================
-    // DOWNLOAD BUFFER
+    // SEND FILE
     // =========================
 
     const buffer =
@@ -478,11 +470,8 @@ app.get("/download", async (req, res) => {
 
       message:
         "Download failed"
-
     });
-
   }
-
 });
 
 
